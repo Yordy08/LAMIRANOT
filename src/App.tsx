@@ -5,14 +5,8 @@ import GeneradorNoticiaPage from './pages/GeneradorNoticia/GeneradorNoticiaPage'
 import GeneradorVideoPage from './pages/GeneradorVideo/GeneradorVideoPage'
 import GeneradorVideoHorizontalPage from './pages/GeneradorVideoHorizontal/GeneradorVideoHorizontalPage'
 import { GeneratorProvider } from './features/generators/state/GeneratorProvider'
-import { AuthProvider, useAuth } from './features/auth/AuthProvider'
-import LoginPage from './pages/LoginPage/LoginPage'
 
-function AppRoutes() {
-  const { isAuthenticated } = useAuth()
-
-  if (!isAuthenticated) return <LoginPage />
-
+export default function App() {
   return (
     <GeneratorProvider>
       <Routes>
@@ -24,14 +18,6 @@ function AppRoutes() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </GeneratorProvider>
-  )
-}
-
-export default function App() {
-  return (
-    <AuthProvider>
-      <AppRoutes />
-    </AuthProvider>
   )
 }
 

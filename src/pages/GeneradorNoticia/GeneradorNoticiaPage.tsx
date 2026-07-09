@@ -2,12 +2,10 @@ import { Link, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import GeneratorEditor from '../../features/generators/components/GeneratorEditor'
 import { plantillaNoticia45 } from '../../features/generators/templates/PlantillaNoticia45'
-import { useAuth } from '../../features/auth/AuthProvider'
 
 /** Barra de navegación compartida entre los módulos generadores. */
 export function GeneratorShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation()
-  const { logout } = useAuth()
   const tab = (to: string, label: string) => {
     const active = pathname === to
     return (
@@ -36,13 +34,6 @@ export function GeneratorShell({ children }: { children: ReactNode }) {
               {tab('/generador/video', 'Reels')}
               {tab('/generador/video-horizontal', 'Video')}
             </nav>
-            <button
-              type="button"
-              onClick={logout}
-              className="rounded-lg border border-slate-700 bg-slate-900/70 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-red-500 hover:text-white"
-            >
-              Deslogueo
-            </button>
           </div>
         </header>
         <main className="flex-1">{children}</main>
