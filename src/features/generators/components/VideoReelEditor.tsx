@@ -914,7 +914,8 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
                   <span
                     key={line}
                     style={{
-                      display: 'inline-block',
+                      display: 'table',
+                      margin: '0 auto',
                       background: config.headlineFitContent ? config.headlineBg : 'transparent',
                       padding: config.headlineFitContent ? `0 ${headlineBox.paddingX}px` : 0,
                     }}
