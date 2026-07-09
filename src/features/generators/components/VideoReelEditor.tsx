@@ -298,7 +298,7 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
   }
 
   const startVideoDrag = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (!videoAboveFrame || !moveVideoMode) return
+    if (!moveVideoMode) return
     e.preventDefault()
     e.currentTarget.setPointerCapture(e.pointerId)
     videoDragRef.current = { x: e.clientX, y: e.clientY, ox: videoOffset.x, oy: videoOffset.y }
@@ -423,7 +423,8 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
           const zoom = videoScale / 100
           const sourceWidth = sourceVideo.videoWidth || videoBox.width
           const sourceHeight = sourceVideo.videoHeight || videoBox.height
-          const fit = Math.max(videoBox.width / sourceWidth, videoBox.height / sourceHeight) * zoom
+          const fitMode = moveVideoMode ? Math.min : Math.max
+          const fit = fitMode(videoBox.width / sourceWidth, videoBox.height / sourceHeight) * zoom
           const drawWidth = sourceWidth * fit
           const drawHeight = sourceHeight * fit
           ctx.save()
@@ -645,42 +646,40 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
             />
           </div>
 
-          {videoAboveFrame && (
-            <div>
+          <div>
+            <button
+              type="button"
+              onClick={() => setMoveVideoMode((active) => !active)}
+              aria-pressed={moveVideoMode}
+              disabled={!videoUrl}
+              className={
+                'flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-3 font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ' +
+                (moveVideoMode
+                  ? 'border-red-500 bg-red-600/20 text-white'
+                  : 'border-slate-600 bg-slate-900/60 text-slate-200 hover:border-red-500 hover:text-white')
+              }
+            >
+              <span
+                className={
+                  'inline-block h-2.5 w-2.5 rounded-full ' +
+                  (moveVideoMode ? 'bg-red-500' : 'bg-slate-500')
+                }
+              />
+              Redimensionar
+            </button>
+            <p className="mt-2 text-xs text-slate-500">
+              Activa esta opción y arrastra el video en la previsualización para moverlo y recortarlo.
+            </p>
+            {videoUrl && (
               <button
                 type="button"
-                onClick={() => setMoveVideoMode((active) => !active)}
-                aria-pressed={moveVideoMode}
-                disabled={!videoUrl}
-                className={
-                  'flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-3 font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ' +
-                  (moveVideoMode
-                    ? 'border-red-500 bg-red-600/20 text-white'
-                    : 'border-slate-600 bg-slate-900/60 text-slate-200 hover:border-red-500 hover:text-white')
-                }
+                onClick={() => setVideoOffset({ x: 0, y: 0 })}
+                className="mt-2 text-xs text-slate-400 underline-offset-2 transition hover:text-white hover:underline"
               >
-                <span
-                  className={
-                    'inline-block h-2.5 w-2.5 rounded-full ' +
-                    (moveVideoMode ? 'bg-red-500' : 'bg-slate-500')
-                  }
-                />
-                Redimensionar
+                Centrar video
               </button>
-              <p className="mt-2 text-xs text-slate-500">
-                Activa esta opción y arrastra el video en la previsualización para moverlo dentro del recorte.
-              </p>
-              {videoUrl && (
-                <button
-                  type="button"
-                  onClick={() => setVideoOffset({ x: 0, y: 0 })}
-                  className="mt-2 text-xs text-slate-400 underline-offset-2 transition hover:text-white hover:underline"
-                >
-                  Centrar video
-                </button>
-              )}
-            </div>
-          )}
+            )}
+          </div>
 
           <div className="pt-2">
             <button
@@ -729,7 +728,7 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
                 </div>
               )}
 
-              {videoUrl && !videoAboveFrame && (
+              {videoUrl && !videoAboveFrame && !moveVideoMode && (
                 <video
                   ref={previewVideoRef}
                   src={videoUrl}
@@ -748,6 +747,45 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
                     transformOrigin: 'center',
                   }}
                 />
+              )}
+
+              {videoUrl && !videoAboveFrame && moveVideoMode && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    width: '100%',
+                    height: '100%',
+                    overflow: 'hidden',
+                    background: '#000',
+                    cursor: 'grab',
+                    touchAction: 'none',
+                  }}
+                  onPointerDown={startVideoDrag}
+                  onPointerMove={moveVideoDrag}
+                  onPointerUp={endVideoDrag}
+                  onPointerCancel={endVideoDrag}
+                >
+                  <video
+                    ref={previewVideoRef}
+                    src={videoUrl}
+                    controls
+                    autoPlay
+                    playsInline
+                    onLoadedMetadata={handlePreviewMetadata}
+                    onTimeUpdate={handlePreviewTimeUpdate}
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      transform: `translate(${videoOffset.x}px, ${videoOffset.y}px) scale(${videoScale / 100})`,
+                      transformOrigin: 'center',
+                    }}
+                  />
+                </div>
               )}
 
               {badge.underFrame && (
