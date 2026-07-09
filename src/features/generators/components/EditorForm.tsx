@@ -16,18 +16,6 @@ interface EditorFormProps {
   zoom: number
   onZoomChange: (zoom: number) => void
   onResetForeground: () => void
-  onPublishToFb: () => void
-  fb: {
-    sdkReady: boolean
-    connected: boolean
-    pageName: string | null
-    publishing: boolean
-    error: string | null
-    success: boolean
-    login: () => void
-    clearError: () => void
-    clearSuccess: () => void
-  }
 }
 
 /**
@@ -49,8 +37,6 @@ export default function EditorForm({
   zoom,
   onZoomChange,
   onResetForeground,
-  onPublishToFb,
-  fb,
 }: EditorFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDraggingImage, setIsDraggingImage] = useState(false)
@@ -234,67 +220,6 @@ export default function EditorForm({
               onChange={(e) => onZoomChange(Number(e.target.value))}
               className="w-full accent-red-600"
             />
-          </div>
-        )}
-      </div>
-
-      <div className="border-t border-slate-800 pt-4">
-        <div className="mb-3 flex items-center justify-between">
-          <span className="text-sm font-bold uppercase tracking-wide text-slate-300">
-            Facebook
-          </span>
-          {fb.connected ? (
-            <span className="flex items-center gap-1.5 text-xs text-emerald-400">
-              <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
-              {fb.pageName ?? 'Conectado'}
-            </span>
-          ) : (
-            <span className="text-xs text-slate-500">Desconectado</span>
-          )}
-        </div>
-
-        {!fb.connected ? (
-          <button
-            type="button"
-            onClick={fb.login}
-            className="w-full rounded-lg border border-slate-600 bg-slate-900/60 px-4 py-3 font-medium text-slate-200 transition hover:border-blue-500 hover:bg-blue-600/20 hover:text-white"
-          >
-            {!fb.sdkReady ? 'Cargando SDK...' : 'Conectar con Facebook'}
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={onPublishToFb}
-            disabled={fb.publishing}
-            className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white shadow-lg shadow-blue-900/40 transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {fb.publishing ? 'Publicando en Facebook...' : 'Publicar en Facebook'}
-          </button>
-        )}
-
-        {fb.error && (
-          <div className="mt-2 flex items-start justify-between gap-2 rounded-lg border border-red-800 bg-red-950/50 p-3">
-            <p className="text-xs text-red-400">{fb.error}</p>
-            <button
-              type="button"
-              onClick={fb.clearError}
-              className="mt-0.5 text-xs text-red-400 hover:text-white"
-            >
-              X
-            </button>
-          </div>
-        )}
-
-        {fb.success && (
-          <div className="mt-2 flex items-start justify-between gap-2 rounded-lg border border-emerald-800 bg-emerald-950/50 p-3">
-            <p className="text-xs text-emerald-400">Publicado en Facebook correctamente.</p>
-            <button
-              type="button"
-              onClick={fb.clearSuccess}
-              className="mt-0.5 text-xs text-emerald-400 hover:text-white"
-            >
-              X
-            </button>
           </div>
         )}
       </div>

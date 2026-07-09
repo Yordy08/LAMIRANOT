@@ -1,12 +1,9 @@
 import { useCallback, useRef } from 'react'
-import { toPng } from 'html-to-image'
 import type { ForegroundTransform, NewsTemplateData, TemplateDefinition } from '../types'
 import { useGenerator } from '../state/GeneratorProvider'
 import { useExportPng } from '../hooks/useExportPng'
-import { useFacebook } from '../../facebook/useFacebook'
 import EditorForm from './EditorForm'
 import TemplateStage from './TemplateStage'
-import RecentNewsPicker from './RecentNewsPicker'
 
 interface GeneratorEditorProps {
   definition: TemplateDefinition
@@ -44,37 +41,6 @@ export default function GeneratorEditor({ definition }: GeneratorEditorProps) {
     [setTransform, definition.id],
   )
 
-  const handleNewsSelect = useCallback(
-    async (news: { rewrittenTitle: string; category: string; imageUrl: string | null }) => {
-      g.setCategory(news.category)
-      g.setHeadline(news.rewrittenTitle)
-      if (!news.imageUrl) return false
-      return g.setImageFromUrl(news.imageUrl)
-    },
-    [g],
-  )
-
-  const fb = useFacebook()
-
-  const publishToFb = useCallback(async () => {
-    const node = exportRef.current
-    if (!node || fb.publishing) return
-
-    try {
-      if (document.fonts?.ready) await document.fonts.ready
-
-      const dataUrl = await toPng(node, {
-        width: definition.size.width,
-        height: definition.size.height,
-        pixelRatio: 1,
-        cacheBust: false,
-        style: { transform: 'none', transformOrigin: 'top left', margin: '0' },
-      })
-
-      await fb.publish(dataUrl, g.headline, g.category)
-    } catch { /* error manejado dentro del hook */ }
-  }, [exportRef, definition.size, g.headline, g.category, fb])
-
   return (
     <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-[380px_1fr]">
       {/* Panel izquierdo */}
@@ -83,7 +49,6 @@ export default function GeneratorEditor({ definition }: GeneratorEditorProps) {
         <p className="mb-6 text-sm text-slate-400">
           {definition.size.width} × {definition.size.height} px
         </p>
-        {definition.id === 'noticia-45' && <RecentNewsPicker onSelect={handleNewsSelect} />}
         <EditorForm
           data={data}
           onCategoryChange={g.setCategory}
@@ -99,8 +64,6 @@ export default function GeneratorEditor({ definition }: GeneratorEditorProps) {
           zoom={foreground.zoom}
           onZoomChange={(zoom) => handleForegroundChange({ ...foreground, zoom })}
           onResetForeground={() => handleForegroundChange({ zoom: 1, x: 0, y: 0 })}
-          onPublishToFb={publishToFb}
-          fb={fb}
         />
         {data.imageUrl && !resizeMode && (
           <p className="mt-4 text-xs text-slate-500">
