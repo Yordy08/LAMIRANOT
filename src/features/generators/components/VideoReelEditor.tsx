@@ -780,7 +780,7 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
                       inset: 0,
                       width: '100%',
                       height: '100%',
-                      objectFit: 'cover',
+                      objectFit: 'contain',
                       transform: `translate(${videoOffset.x}px, ${videoOffset.y}px) scale(${videoScale / 100})`,
                       transformOrigin: 'center',
                     }}
