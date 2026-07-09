@@ -489,29 +489,32 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
         ctx.shadowBlur = 14
         ctx.shadowOffsetY = 3
         const centerX = headlineBox.left + headlineBox.width / 2
+        const isCenter = config.headlineTextAlign === 'center'
+
+        if (!config.headlineFitContent) {
+          ctx.shadowColor = 'transparent'
+          ctx.fillStyle = config.headlineBg
+          drawRoundedRect(ctx, headlineBox.left, headlineBox.top, headlineBox.width, headlineVisualHeight, headlineBox.radius)
+          ctx.fill()
+        }
+
         headlineLines.forEach((line, index) => {
           const lineTop = headlineBox.top + index * headlineLineHeight
           const textY = lineTop + headlineBox.paddingY
           const lineWidth = ctx.measureText(line).width
 
-          ctx.shadowColor = 'transparent'
-          ctx.fillStyle = config.headlineBg
-          if (config.headlineTextAlign === 'center') {
-            const bgLeft = config.headlineFitContent
-              ? centerX - (lineWidth + headlineBox.paddingX * 2) / 2
-              : headlineBox.left
-            const bgWidth = config.headlineFitContent
-              ? lineWidth + headlineBox.paddingX * 2
-              : headlineBox.width
+          if (config.headlineFitContent) {
+            ctx.shadowColor = 'transparent'
+            ctx.fillStyle = config.headlineBg
+            const bgLeft = isCenter ? centerX - (lineWidth + headlineBox.paddingX * 2) / 2 : headlineBox.left
+            const bgWidth = isCenter ? lineWidth + headlineBox.paddingX * 2 : lineWidth + headlineBox.paddingX * 2
             drawRoundedRect(ctx, bgLeft, lineTop, bgWidth, headlineLineHeight + headlineBox.paddingY * 2, headlineBox.radius)
-          } else {
-            drawRoundedRect(ctx, headlineBox.left, lineTop, config.headlineFitContent ? lineWidth + headlineBox.paddingX * 2 : headlineBox.width, headlineLineHeight + headlineBox.paddingY * 2, headlineBox.radius)
+            ctx.fill()
           }
-          ctx.fill()
 
           ctx.fillStyle = '#fff'
           ctx.shadowColor = 'rgba(0,0,0,0.65)'
-          ctx.fillText(line, config.headlineTextAlign === 'center' ? centerX : headlineBox.left + headlineBox.paddingX, textY)
+          ctx.fillText(line, isCenter ? centerX : headlineBox.left + headlineBox.paddingX, textY)
         })
       }
 
