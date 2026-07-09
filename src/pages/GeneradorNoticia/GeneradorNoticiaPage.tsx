@@ -28,14 +28,13 @@ export function GeneratorShell({ children }: { children: ReactNode }) {
         <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-white">Generador de plantillas</h1>
-            <p className="text-sm text-slate-400">Burbuja Política</p>
+            <p className="text-sm text-slate-400">La Mira Noticiosa</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <nav className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/50 p-1">
-              {tab('/generador/noticia', 'Noticia 4:5')}
-              {tab('/generador/historia', 'Historia 9:16')}
-              {tab('/generador/video', 'Video 9:16')}
-              {tab('/generador/video-horizontal', 'Video Horizontal')}
+              {tab('/generador/noticia', 'Post')}
+              {tab('/generador/video', 'Reels')}
+              {tab('/generador/video-horizontal', 'Video')}
             </nav>
             <button
               type="button"
@@ -52,7 +51,7 @@ export function GeneratorShell({ children }: { children: ReactNode }) {
   )
 }
 
-/** Módulo generador de la plantilla de noticia 4:5. */
+/** Módulo generador de la plantilla Post. */
 export default function GeneradorNoticiaPage() {
   return (
     <GeneratorShell>

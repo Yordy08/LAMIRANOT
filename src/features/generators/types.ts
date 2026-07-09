@@ -76,12 +76,17 @@ export interface FrameLayout {
     minWidth: number
     height: number
     fontSize: number
+    fontWeight?: number
     paddingX: number
     /**
      * border-radius CSS (orden: top-left top-right bottom-right bottom-left).
      * Por defecto se redondean las esquinas opuestas: '18px 0 18px 0'.
      */
     borderRadius: string
+    background?: string
+    border?: string
+    color?: string
+    textStroke?: string
   }
   /** Titular editable. */
   headline: {
@@ -91,12 +96,17 @@ export interface FrameLayout {
     fontSize: number
     lineHeight: number
     fontWeight: number
+    textAlign?: 'left' | 'center' | 'right'
+    color?: string
+    background?: string
+    paddingX?: number
+    paddingY?: number
   }
 }
 
 /**
  * Descriptor de una plantilla. Registrar una plantilla nueva
- * (por ejemplo un formato Historia 9:16) consiste únicamente en
+ * consiste únicamente en
  * crear su componente visual y exportar uno de estos objetos.
  */
 export interface TemplateDefinition {

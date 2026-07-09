@@ -18,6 +18,7 @@ interface GeneratorContextValue {
   setCategory: (v: string) => void
   setHeadline: (v: string) => void
   setImageFile: (file: File | null) => void
+  setImageFromUrl: (url: string) => Promise<boolean>
   /** Posición del encuadre, INDEPENDIENTE por plantilla (`templateId`). */
   getPosition: (templateId: string) => ImagePosition
   setPosition: (templateId: string, pos: ImagePosition) => void
@@ -60,7 +61,7 @@ function loadText(): PersistedText {
 /**
  * Provee el estado del generador (categoría, titular, imagen y posiciones) de
  * forma COMPARTIDA entre todas las plantillas, para que la imagen y los textos
- * se mantengan al cambiar entre pestañas (Noticia ↔ Historia). Las posiciones
+  * se mantengan al cambiar entre pestañas. Las posiciones
  * del encuadre se guardan por plantilla.
  *
  * Persiste en localStorage: los textos/posiciones en una clave y la imagen
@@ -117,6 +118,36 @@ export function GeneratorProvider({ children }: { children: ReactNode }) {
     reader.readAsDataURL(file)
   }, [])
 
+  const setImageFromUrl = useCallback(async (url: string) => {
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
+    const localProxyUrl = `/api/image-proxy?url=${encodeURIComponent(url)}`
+    const responses = import.meta.env.DEV ? [url, proxyUrl] : [localProxyUrl, url, proxyUrl]
+
+    for (const src of responses) {
+      try {
+        const response = await fetch(src)
+        if (!response.ok) continue
+        const blob = await response.blob()
+        if (!blob.type.startsWith('image/')) continue
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => {
+            if (typeof reader.result === 'string') resolve(reader.result)
+            else reject(new Error('Imagen inválida'))
+          }
+          reader.onerror = () => reject(new Error('No se pudo leer la imagen'))
+          reader.readAsDataURL(blob)
+        })
+        setImageDataUrl(dataUrl)
+        return true
+      } catch {
+        /* intentar siguiente origen */
+      }
+    }
+
+    return false
+  }, [])
+
   const getPosition = useCallback(
     (templateId: string) => positions[templateId] ?? DEFAULT_POSITION,
     [positions],
@@ -160,6 +191,7 @@ export function GeneratorProvider({ children }: { children: ReactNode }) {
     setCategory,
     setHeadline,
     setImageFile,
+    setImageFromUrl,
     getPosition,
     setPosition,
     getResizeMode,

@@ -1,17 +1,36 @@
-Crea una vista llamada "Video Horizontal" usando la plantilla "noticia" 
-ubicada en /assets, similar a la vista "Noticia". es la misma
+Ajusta la vista "Post" para que cada noticia seleccionada se transforme así:
 
-Características:
-1. El usuario puede cargar un video .
-2. El fondo por defecto debe ser negro.
-3. La plantilla "noticia" se aplica automáticamente sobre el video.
-4. Los textos editables deben estar en los bloques definidos:
-   - "Categoría" en la parte superior.
-   - "Titular" debajo de la categoría.
-5. El usuario puede modificar esos textos directamente, pero la posición 
-   y estilo visual se mantienen según la plantilla.
+1. Titular:
+   - Breve (máx. 8–10 palabras).
+   - Coherente con la noticia original.
+   - Atractivo y dinámico para redes sociales.
+   - Formato: "Declaración" — Fuente.
 
-7. El diseño debe mantener coherencia con las vistas "Historia", "Noticia" 
-   y "Video 9:16".
+2. Descripción:
+   - Texto completo (2–3 párrafos).
+   - Parafraseado con otra intención narrativa, pero fiel a la noticia.
+   - Debe contextualizar y explicar el hecho, no solo resumirlo.
+   - Nunca inventar datos, solo reinterpretar.
 
-8. Esta vista debe tener los mismos estilos y opociones que video 9:16
+3. Imagen:
+   - Si la noticia trae imagen del medio, conservarla.
+   - Si no hay imagen disponible, buscar automáticamente en Google 
+     una imagen relacionada con el tema (ejemplo: "Congreso Colombia reforma tributaria").
+   - La imagen debe ser coherente y representativa del tema.
+
+Categoría:
+   - El sistema debe asignar automáticamente una categoría según el tema:
+     - Política nacional → "Nacional"
+     - Emergencias, accidentes → "Atención" o "Alerta"
+     - Noticias recientes → "Lo último"
+     - Hechos relevantes → "Es noticia"
+     - Historias humanas → "Emotivo"
+     - Sucesos fuertes o sorpresivos → "Impactante"
+   - La categoría se muestra en la parte superior del Post.
+
+
+Reglas:
+- Nunca inventar información ni autores.
+- Titulares siempre cortos y coherentes.
+- Descripciones completas, claras y atractivas.
+- Imagen siempre real: del medio o relacionada encontrada en Google.

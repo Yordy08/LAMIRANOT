@@ -1,23 +1,5 @@
 @import "tailwindcss";
 
-/*
- * Fuente de las plantillas: Helvetica Now Display.
- * Si tienes los archivos webfont (licencia Monotype), colócalos en /public/fonts/
- * y descomenta estos @font-face para que la tipografía se vea igual en cualquier
- * equipo y en el PNG exportado. Si no, se usa la Helvetica instalada localmente.
- *
- * @font-face {
- *   font-family: 'Helvetica Now Display';
- *   src: url('/fonts/HelveticaNowDisplay-Bold.woff2') format('woff2');
- *   font-weight: 700; font-style: normal; font-display: swap;
- * }
- * @font-face {
- *   font-family: 'Helvetica Now Display';
- *   src: url('/fonts/HelveticaNowDisplay-ExtraBold.woff2') format('woff2');
- *   font-weight: 800; font-style: normal; font-display: swap;
- * }
- */
-
 html, body { height: 100%; }
 body { margin: 0; background: #070b14; }
 *{ box-sizing:border-box; }

@@ -9,17 +9,17 @@ const items = [
   {
     title: 'Varios formatos',
     description:
-      'Noticia 4:5 e Historia 9:16. La misma imagen se reencuadra a cada formato, con posición independiente.',
+      'Post, Reels y Video con plantillas listas para publicar.',
   },
   {
     title: 'Exporta en alta calidad',
     description:
-      'Descarga un PNG a resolución nativa (1080×1350 o 1080×1920), listo para publicar.',
+      'Descarga PNG o video a resolución nativa, listo para publicar.',
   },
   {
     title: 'Imagen movible',
     description:
-      'Arrastra la foto en la vista previa para ajustar el encuadre. Se guarda localmente entre plantillas.',
+      'Arrastra la foto o video en la vista previa para ajustar el encuadre.',
   },
 ]
 

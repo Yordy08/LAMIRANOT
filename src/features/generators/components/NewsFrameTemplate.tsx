@@ -19,7 +19,7 @@ interface NewsFrameTemplateProps {
 }
 
 const FONT_HEADLINE =
-  "'Helvetica Now Display', 'Helvetica Neue', Helvetica, Arial, system-ui, sans-serif"
+  "'Arial Black', Arial, Helvetica, system-ui, sans-serif"
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
 
@@ -69,6 +69,7 @@ const BADGE_BASE_STYLE: CSSProperties = {
   position: 'absolute',
   display: 'inline-flex',
   alignItems: 'center',
+  justifyContent: 'center',
   boxSizing: 'border-box',
   border: '2px solid #ffffff',
   background: 'linear-gradient(90deg, #d0202c 0%, #c11a26 46%, #2c0510 70%, #0a0204 100%)',
@@ -103,8 +104,8 @@ const HEADLINE_BASE_STYLE: CSSProperties = {
  *   3. Badge de categoría (editable) que cubre el badge del marco.
  *   4. Titular editable.
  *
- * Las dos plantillas (Noticia 4:5 e Historia 9:16) reutilizan este componente;
- * solo cambian el `layout` y el tamaño.
+ * Las plantillas de noticia reutilizan este componente; solo cambian el `layout`
+ * y el tamaño.
  */
 const ZOOM_MIN = 0.5
 const ZOOM_MAX = 5
@@ -122,6 +123,7 @@ export default function NewsFrameTemplate({
   const { badge, headline } = layout
   const category = data.category.trim() || 'CATEGORÍA'
   const headlineText = data.headline.trim() || 'Escribe aquí el titular de la noticia.'
+
 
   const pos = imagePosition ?? { x: 50, y: 50 }
   const fg = foreground ?? { zoom: 1, x: 0, y: 0 }
@@ -285,9 +287,21 @@ export default function NewsFrameTemplate({
           paddingLeft: badge.paddingX,
           paddingRight: badge.paddingX,
           borderRadius: badge.borderRadius,
+          background: badge.background ?? BADGE_BASE_STYLE.background,
+          border: badge.border ?? BADGE_BASE_STYLE.border,
         }}
       >
-        <span style={{ ...BADGE_TEXT_STYLE, fontSize: badge.fontSize }}>{category}</span>
+        <span
+          style={{
+            ...BADGE_TEXT_STYLE,
+            fontWeight: badge.fontWeight ?? BADGE_TEXT_STYLE.fontWeight,
+            fontSize: badge.fontSize,
+            color: badge.color ?? BADGE_TEXT_STYLE.color,
+            WebkitTextStroke: badge.textStroke,
+          }}
+        >
+          {category}
+        </span>
       </div>
 
       {/* 4. Titular */}
@@ -300,6 +314,10 @@ export default function NewsFrameTemplate({
           fontWeight: headline.fontWeight,
           fontSize: headline.fontSize * headlineScale,
           lineHeight: `${headline.lineHeight * headlineScale}px`,
+          textAlign: headline.textAlign,
+          color: headline.color ?? HEADLINE_BASE_STYLE.color,
+          background: headline.background,
+          padding: `${headline.paddingY ?? 0}px ${headline.paddingX ?? 0}px`,
         }}
       >
         {headlineText}

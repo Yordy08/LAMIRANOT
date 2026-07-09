@@ -4,6 +4,7 @@ import { useGenerator } from '../state/GeneratorProvider'
 import { useExportPng } from '../hooks/useExportPng'
 import EditorForm from './EditorForm'
 import TemplateStage from './TemplateStage'
+import RecentNewsPicker from './RecentNewsPicker'
 
 interface GeneratorEditorProps {
   definition: TemplateDefinition
@@ -41,6 +42,16 @@ export default function GeneratorEditor({ definition }: GeneratorEditorProps) {
     [setTransform, definition.id],
   )
 
+  const handleNewsSelect = useCallback(
+    async (news: { rewrittenTitle: string; category: string; imageUrl: string | null }) => {
+      g.setCategory(news.category)
+      g.setHeadline(news.rewrittenTitle)
+      if (!news.imageUrl) return false
+      return g.setImageFromUrl(news.imageUrl)
+    },
+    [g],
+  )
+
   return (
     <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-[380px_1fr]">
       {/* Panel izquierdo */}
@@ -49,6 +60,7 @@ export default function GeneratorEditor({ definition }: GeneratorEditorProps) {
         <p className="mb-6 text-sm text-slate-400">
           {definition.size.width} × {definition.size.height} px
         </p>
+        {definition.id === 'noticia-45' && <RecentNewsPicker onSelect={handleNewsSelect} />}
         <EditorForm
           data={data}
           onCategoryChange={g.setCategory}
