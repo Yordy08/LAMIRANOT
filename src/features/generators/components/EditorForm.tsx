@@ -16,6 +16,14 @@ interface EditorFormProps {
   zoom: number
   onZoomChange: (zoom: number) => void
   onResetForeground: () => void
+  fbStatus: { connected: boolean; pageName?: string } | null
+  fbPublishing: boolean
+  fbError: string | null
+  fbSuccess: boolean
+  onConnectFacebook: () => void
+  onPublishToFb: () => void
+  onClearFbSuccess: () => void
+  onClearFbError: () => void
 }
 
 /**
@@ -37,6 +45,14 @@ export default function EditorForm({
   zoom,
   onZoomChange,
   onResetForeground,
+  fbStatus,
+  fbPublishing,
+  fbError,
+  fbSuccess,
+  onConnectFacebook,
+  onPublishToFb,
+  onClearFbSuccess,
+  onClearFbError,
 }: EditorFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDraggingImage, setIsDraggingImage] = useState(false)
@@ -224,6 +240,67 @@ export default function EditorForm({
         )}
       </div>
 
+      <div className="border-t border-slate-800 pt-4">
+        <div className="mb-3 flex items-center justify-between">
+          <span className="text-sm font-bold uppercase tracking-wide text-slate-300">
+            Facebook
+          </span>
+          {fbStatus?.connected ? (
+            <span className="flex items-center gap-1.5 text-xs text-emerald-400">
+              <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
+              {fbStatus.pageName ?? 'Conectado'}
+            </span>
+          ) : (
+            <span className="text-xs text-slate-500">Desconectado</span>
+          )}
+        </div>
+
+        {!fbStatus?.connected ? (
+          <button
+            type="button"
+            onClick={onConnectFacebook}
+            className="w-full rounded-lg border border-slate-600 bg-slate-900/60 px-4 py-3 font-medium text-slate-200 transition hover:border-blue-500 hover:bg-blue-600/20 hover:text-white"
+          >
+            Conectar con Facebook
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onPublishToFb}
+            disabled={fbPublishing}
+            className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white shadow-lg shadow-blue-900/40 transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {fbPublishing ? 'Publicando en Facebook...' : 'Publicar en Facebook'}
+          </button>
+        )}
+
+        {fbError && (
+          <div className="mt-2 flex items-start justify-between gap-2 rounded-lg border border-red-800 bg-red-950/50 p-3">
+            <p className="text-xs text-red-400">{fbError}</p>
+            <button
+              type="button"
+              onClick={onClearFbError}
+              className="mt-0.5 text-xs text-red-400 hover:text-white"
+            >
+              X
+            </button>
+          </div>
+        )}
+
+        {fbSuccess && (
+          <div className="mt-2 flex items-start justify-between gap-2 rounded-lg border border-emerald-800 bg-emerald-950/50 p-3">
+            <p className="text-xs text-emerald-400">Publicado en Facebook correctamente.</p>
+            <button
+              type="button"
+              onClick={onClearFbSuccess}
+              className="mt-0.5 text-xs text-emerald-400 hover:text-white"
+            >
+              X
+            </button>
+          </div>
+        )}
+      </div>
+
       <div className="pt-2">
         <button
           type="button"
@@ -231,7 +308,7 @@ export default function EditorForm({
           disabled={isExporting}
           className="w-full rounded-lg bg-red-600 px-4 py-3 font-semibold text-white shadow-lg shadow-red-900/40 transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isExporting ? 'Exportando…' : 'Exportar PNG'}
+          {isExporting ? 'Exportando...' : 'Exportar PNG'}
         </button>
         {exportError && <p className="mt-2 text-sm text-red-400">{exportError}</p>}
       </div>
