@@ -9,6 +9,38 @@ const BADGE_LETTER_SPACING = 1
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 const TIMELINE_TICKS = Array.from({ length: 18 }, (_, index) => `tick-${index}`)
 
+type ExportPresetKey = 'fast' | 'balanced' | 'max'
+
+const EXPORT_PRESETS: Record<
+  ExportPresetKey,
+  { label: string; description: string; scale: number; fps: number; videoBitsPerSecond: number; audioBitsPerSecond: number }
+> = {
+  fast: {
+    label: 'Rápido',
+    description: 'Más veloz y estable para compartir rápido.',
+    scale: 2 / 3,
+    fps: 24,
+    videoBitsPerSecond: 4_500_000,
+    audioBitsPerSecond: 128_000,
+  },
+  balanced: {
+    label: 'Calidad',
+    description: 'Buen equilibrio entre peso, calidad y compatibilidad.',
+    scale: 1,
+    fps: 24,
+    videoBitsPerSecond: 6_000_000,
+    audioBitsPerSecond: 160_000,
+  },
+  max: {
+    label: 'Máxima',
+    description: 'Mayor calidad, tarda más y genera archivos pesados.',
+    scale: 1,
+    fps: 30,
+    videoBitsPerSecond: 8_000_000,
+    audioBitsPerSecond: 192_000,
+  },
+}
+
 export interface VideoTemplateConfig {
   title: string
   frameSrc: string
@@ -202,6 +234,7 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
   const draggingTrimRef = useRef<'start' | 'end' | null>(null)
   const [headlineSize, setHeadlineSize] = useState(config.headlineSize.initial)
   const [videoScale, setVideoScale] = useState(100)
+  const [exportPreset, setExportPreset] = useState<ExportPresetKey>('fast')
   const [isExporting, setIsExporting] = useState(false)
   const [exportProgress, setExportProgress] = useState(0)
   const [exportError, setExportError] = useState<string | null>(null)
@@ -342,6 +375,9 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
   const trimStartPct = videoDuration ? (trimStart / videoDuration) * 100 : 0
   const trimEndPct = videoDuration ? (trimEnd / videoDuration) * 100 : 100
   const playheadPct = videoDuration ? (previewTime / videoDuration) * 100 : 0
+  const selectedExportPreset = EXPORT_PRESETS[exportPreset]
+  const exportWidth = Math.round(size.width * selectedExportPreset.scale)
+  const exportHeight = Math.round(size.height * selectedExportPreset.scale)
 
   const exportVideo = async () => {
     if (!videoUrl || isExporting) return
@@ -381,9 +417,11 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
         throw new Error('Selecciona un rango válido para exportar.')
       }
 
+      const preset = EXPORT_PRESETS[exportPreset]
+      const exportScale = preset.scale
       const canvas = document.createElement('canvas')
-      canvas.width = size.width
-      canvas.height = size.height
+      canvas.width = Math.round(size.width * exportScale)
+      canvas.height = Math.round(size.height * exportScale)
       const ctx = canvas.getContext('2d')
       if (!ctx) throw new Error('No se pudo preparar el lienzo de exportación.')
 
@@ -399,8 +437,8 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
       const { mimeType, extension } = getVideoExportFormat()
       const recorder = new MediaRecorder(stream, {
         ...(mimeType ? { mimeType } : {}),
-        videoBitsPerSecond: size.height >= 1800 ? 8_000_000 : 6_000_000,
-        audioBitsPerSecond: 192_000,
+        videoBitsPerSecond: preset.videoBitsPerSecond,
+        audioBitsPerSecond: preset.audioBitsPerSecond,
       })
       const chunks: Blob[] = []
       let lastProgress = -1
@@ -415,6 +453,7 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
       })
 
       const drawFrame = () => {
+        ctx.setTransform(exportScale, 0, 0, exportScale, 0, 0)
         ctx.clearRect(0, 0, size.width, size.height)
         ctx.fillStyle = '#000'
         ctx.fillRect(0, 0, size.width, size.height)
@@ -532,8 +571,14 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
       recorder.start(1000)
 
       await new Promise<void>((resolve) => {
+        const frameInterval = 1000 / preset.fps
+        let nextFrameAt = 0
         const render = () => {
-          drawFrame()
+          const now = performance.now()
+          if (now >= nextFrameAt) {
+            drawFrame()
+            nextFrameAt = now + frameInterval
+          }
           const segmentDuration = exportEnd - exportStart
           if (segmentDuration > 0) {
             const nextProgress = Math.min(99, Math.round(((sourceVideo.currentTime - exportStart) / segmentDuration) * 100))
@@ -688,6 +733,30 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
                 Centrar video
               </button>
             )}
+          </div>
+
+          <div>
+            <label htmlFor="export-preset" className={labelClass}>
+              Modo de exportación
+            </label>
+            <select
+              id="export-preset"
+              value={exportPreset}
+              onChange={(e) => setExportPreset(e.target.value as ExportPresetKey)}
+              disabled={isExporting}
+              className={fieldClass}
+            >
+              {(Object.entries(EXPORT_PRESETS) as Array<[ExportPresetKey, typeof selectedExportPreset]>).map(
+                ([key, preset]) => (
+                  <option key={key} value={key}>
+                    {preset.label} - {Math.round(size.width * preset.scale)}x{Math.round(size.height * preset.scale)} / {preset.fps}fps
+                  </option>
+                ),
+              )}
+            </select>
+            <p className="mt-2 text-xs text-slate-500">
+              {selectedExportPreset.description} Exporta en {exportWidth}x{exportHeight} a {selectedExportPreset.fps}fps.
+            </p>
           </div>
 
           <div className="pt-2">
