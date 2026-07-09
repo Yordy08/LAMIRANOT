@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef } from 'react'
 import { toPng } from 'html-to-image'
 import type { ForegroundTransform, NewsTemplateData, TemplateDefinition } from '../types'
 import { useGenerator } from '../state/GeneratorProvider'
 import { useExportPng } from '../hooks/useExportPng'
+import { useFacebook } from '../../facebook/useFacebook'
 import EditorForm from './EditorForm'
 import TemplateStage from './TemplateStage'
 import RecentNewsPicker from './RecentNewsPicker'
@@ -53,44 +54,11 @@ export default function GeneratorEditor({ definition }: GeneratorEditorProps) {
     [g],
   )
 
-  const [fbStatus, setFbStatus] = useState<{ connected: boolean; pageName?: string } | null>(null)
-  const [fbPublishing, setFbPublishing] = useState(false)
-  const [fbError, setFbError] = useState<string | null>(null)
-  const [fbSuccess, setFbSuccess] = useState(false)
-
-  useEffect(() => {
-    fetch('/api/facebook-status')
-      .then((r) => r.json())
-      .then((data) => setFbStatus(data))
-      .catch(() => setFbStatus({ connected: false }))
-  }, [])
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const fb = params.get('fb')
-    if (fb === 'connected') {
-      setFbStatus({ connected: true })
-      window.history.replaceState({}, '', window.location.pathname)
-      fetch('/api/facebook-status')
-        .then((r) => r.json())
-        .then((data) => setFbStatus(data))
-        .catch(() => {})
-    } else if (fb === 'denied') {
-      window.history.replaceState({}, '', window.location.pathname)
-    } else if (fb === 'error') {
-      const detail = params.get('detail')
-      setFbError(detail ? decodeURIComponent(detail) : 'Error al conectar con Facebook')
-      window.history.replaceState({}, '', window.location.pathname)
-    }
-  }, [])
+  const fb = useFacebook()
 
   const publishToFb = useCallback(async () => {
     const node = exportRef.current
-    if (!node || fbPublishing) return
-
-    setFbPublishing(true)
-    setFbError(null)
-    setFbSuccess(false)
+    if (!node || fb.publishing) return
 
     try {
       if (document.fonts?.ready) await document.fonts.ready
@@ -103,34 +71,9 @@ export default function GeneratorEditor({ definition }: GeneratorEditorProps) {
         style: { transform: 'none', transformOrigin: 'top left', margin: '0' },
       })
 
-      const response = await fetch('/api/facebook-post', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          image: dataUrl,
-          headline: g.headline,
-          category: g.category,
-        }),
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        setFbError(result.error || result.detail || 'Error al publicar en Facebook')
-        return
-      }
-
-      setFbSuccess(true)
-    } catch (err) {
-      setFbError(err instanceof Error ? err.message : 'Error al publicar en Facebook')
-    } finally {
-      setFbPublishing(false)
-    }
-  }, [exportRef, definition.size, g.headline, g.category, fbPublishing])
-
-  const connectFacebook = useCallback(() => {
-    window.location.href = '/api/facebook-login'
-  }, [])
+      await fb.publish(dataUrl, g.headline, g.category)
+    } catch { /* error manejado dentro del hook */ }
+  }, [exportRef, definition.size, g.headline, g.category, fb])
 
   return (
     <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-[380px_1fr]">
@@ -156,14 +99,8 @@ export default function GeneratorEditor({ definition }: GeneratorEditorProps) {
           zoom={foreground.zoom}
           onZoomChange={(zoom) => handleForegroundChange({ ...foreground, zoom })}
           onResetForeground={() => handleForegroundChange({ zoom: 1, x: 0, y: 0 })}
-          fbStatus={fbStatus}
-          fbPublishing={fbPublishing}
-          fbError={fbError}
-          fbSuccess={fbSuccess}
-          onConnectFacebook={connectFacebook}
           onPublishToFb={publishToFb}
-          onClearFbSuccess={() => setFbSuccess(false)}
-          onClearFbError={() => setFbError(null)}
+          fb={fb}
         />
         {data.imageUrl && !resizeMode && (
           <p className="mt-4 text-xs text-slate-500">
