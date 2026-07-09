@@ -23,9 +23,9 @@ const layout: FrameLayout = {
     textStroke: '1px #000',
   },
   headline: {
-    left: 145,
+    left: 80,
     top: 1012,
-    right: 145,
+    right: 82,
     fontSize: 64,
     lineHeight: 74,
     fontWeight: 900,
