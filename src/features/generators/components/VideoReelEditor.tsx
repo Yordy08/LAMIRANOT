@@ -5,6 +5,7 @@ import reelFrameSrc from '../assets/reels-frame.png'
 const REEL_SIZE = { width: 1080, height: 1920 }
 const FONT_HEADLINE =
   "'Arial Black', Arial, Helvetica, system-ui, sans-serif"
+const BADGE_LETTER_SPACING = 1
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 const TIMELINE_TICKS = Array.from({ length: 18 }, (_, index) => `tick-${index}`)
 
@@ -41,6 +42,7 @@ export interface VideoTemplateConfig {
   headlineWeight?: number
   headlineSize: { initial: number; min: number; max: number }
   headlineTextAlign?: CanvasTextAlign
+  headlineNoWrap?: boolean
   videoBox?: { left: number; top: number; width: number; height: number; radius?: number }
 }
 
@@ -52,23 +54,23 @@ const reelConfig: VideoTemplateConfig = {
   initialHeadline: 'Aqui titular ejemplo',
   placeholder: 'Sube un video',
   badge: {
-    left: 208,
-    top: 1169,
-    minWidth: 444,
-    height: 94,
-    paddingX: 32,
-    fontSize: 58,
+    left: 180,
+    top: 1181,
+    minWidth: 430,
+    height: 80,
+    paddingX: 20,
+    fontSize: 56,
     background: '#fff',
     color: '#000',
     border: 'none',
-    radius: 18,
+    radius: 13,
     shadow: 'none',
     textShadow: 'none',
     underFrame: true,
     backgroundLeft: 125,
-    backgroundWidth: 525,
+    backgroundWidth: 520,
   },
-  headlineBox: { left: 211, top: 1278, width: 680, minHeight: 64, paddingX: 8, paddingY: 4, radius: 0 },
+  headlineBox: { left: 211, top: 1278, width: 830, minHeight: 64, paddingX: 8, paddingY: 5, radius: 0 },
   headlineBg: '#c90018',
   headlineFitContent: true,
   headlineSize: { initial: 48, min: 34, max: 68 },
@@ -127,6 +129,34 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
   return lines
 }
 
+function measureSpacedText(ctx: CanvasRenderingContext2D, text: string, letterSpacing: number) {
+  const chars = Array.from(text)
+  const textWidth = chars.reduce((width, char) => width + ctx.measureText(char).width, 0)
+  return textWidth + Math.max(0, chars.length - 1) * letterSpacing
+}
+
+function drawSpacedText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  letterSpacing: number,
+  stroke = false,
+) {
+  let cursor = x
+
+  for (const char of Array.from(text)) {
+    if (stroke && char.trim()) ctx.strokeText(char, cursor, y)
+    ctx.fillText(char, cursor, y)
+    cursor += ctx.measureText(char).width + letterSpacing
+  }
+}
+
+function getCenteredTextBaseline(ctx: CanvasRenderingContext2D, text: string, centerY: number) {
+  const metrics = ctx.measureText(text)
+  return centerY + (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) / 2
+}
+
 function getWrappedTextLines(text: string, font: string, maxWidth: number) {
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
@@ -135,47 +165,17 @@ function getWrappedTextLines(text: string, font: string, maxWidth: number) {
   return wrapText(ctx, text, maxWidth)
 }
 
-interface SourceVideoInfo {
-  type: string
-  extension: string
-}
-
-function getVideoExtension(fileName: string, mimeType: string) {
-  const fromName = fileName.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase()
-  if (fromName) return fromName
-  if (mimeType.includes('mp4')) return 'mp4'
-  if (mimeType.includes('webm')) return 'webm'
-  return 'webm'
-}
-
-function getVideoExportFormat(source?: SourceVideoInfo | null) {
-  const sourceIsMp4 = source?.type.includes('mp4') || source?.extension === 'mp4'
-  const sourceIsWebm = source?.type.includes('webm') || source?.extension === 'webm'
-  const sourceCandidates = sourceIsMp4
-    ? [
-        { mimeType: 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', extension: 'mp4' },
-        { mimeType: 'video/mp4;codecs=h264,aac', extension: 'mp4' },
-        { mimeType: 'video/mp4', extension: 'mp4' },
-      ]
-    : sourceIsWebm
-      ? [
-          { mimeType: 'video/webm;codecs=vp9,opus', extension: 'webm' },
-          { mimeType: 'video/webm;codecs=vp8,opus', extension: 'webm' },
-          { mimeType: 'video/webm', extension: 'webm' },
-        ]
-      : []
-
+function getVideoExportFormat() {
   const candidates = [
-    ...sourceCandidates,
-    { mimeType: 'video/webm;codecs=vp9,opus', extension: 'webm' },
     { mimeType: 'video/webm;codecs=vp8,opus', extension: 'webm' },
+    { mimeType: 'video/webm;codecs=vp9,opus', extension: 'webm' },
     { mimeType: 'video/webm', extension: 'webm' },
   ]
   const supported = candidates.find(({ mimeType }) => MediaRecorder.isTypeSupported(mimeType))
   if (supported) return supported
   return {
     mimeType: '',
-    extension: source?.extension ?? 'webm',
+    extension: 'webm',
   }
 }
 
@@ -206,7 +206,6 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
   const [exportProgress, setExportProgress] = useState(0)
   const [exportError, setExportError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const sourceVideoInfoRef = useRef<SourceVideoInfo | null>(null)
   const previewVideoRef = useRef<HTMLVideoElement>(null)
   const timelineRef = useRef<HTMLDivElement>(null)
   const videoDragRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null)
@@ -222,7 +221,6 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
     const file = e.target.files?.[0]
     if (!file) return
     const nextUrl = URL.createObjectURL(file)
-    sourceVideoInfoRef.current = { type: file.type, extension: getVideoExtension(file.name, file.type) }
     setVideoDuration(0)
     setTrimStart(0)
     setTrimEnd(0)
@@ -328,7 +326,7 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
     'w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 ' +
     'outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-500/40'
 
-  const displayCategory = category.trim() || 'CATEGORÍA'
+  const displayCategory = (category.trim() || 'CATEGORÍA').toUpperCase()
   const displayHeadline = headline.trim() || 'Escribe aquí el titular del video.'
   const headlineLineHeight = headlineSize * 0.92
   const headlineFont = `${config.headlineWeight ?? 800} ${headlineSize}px ${FONT_HEADLINE}`
@@ -389,7 +387,8 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
       const ctx = canvas.getContext('2d')
       if (!ctx) throw new Error('No se pudo preparar el lienzo de exportación.')
 
-      const stream = canvas.captureStream(30)
+      const stream = canvas.captureStream(0)
+      const videoTrack = stream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack | undefined
       audioContext = new AudioContext()
       const audioSource = audioContext.createMediaElementSource(sourceVideo)
       const audioDestination = audioContext.createMediaStreamDestination()
@@ -397,10 +396,10 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
       audioDestination.stream.getAudioTracks().forEach((track) => stream.addTrack(track))
       await audioContext.resume()
 
-      const { mimeType, extension } = getVideoExportFormat(sourceVideoInfoRef.current)
+      const { mimeType, extension } = getVideoExportFormat()
       const recorder = new MediaRecorder(stream, {
         ...(mimeType ? { mimeType } : {}),
-        videoBitsPerSecond: size.height >= 1800 ? 12_000_000 : 9_000_000,
+        videoBitsPerSecond: size.height >= 1800 ? 8_000_000 : 6_000_000,
         audioBitsPerSecond: 192_000,
       })
       const chunks: Blob[] = []
@@ -442,10 +441,11 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
         }
 
         ctx.font = `${badge.fontWeight ?? 800} ${badge.fontSize}px ${FONT_HEADLINE}`
-        const badgeWidth = Math.max(badge.minWidth, ctx.measureText(displayCategory).width + badge.paddingX * 2)
+        const categoryWidth = measureSpacedText(ctx, displayCategory, BADGE_LETTER_SPACING)
+        const badgeWidth = Math.max(badge.minWidth, categoryWidth + badge.paddingX * 2)
         const drawBadgeBackground = () => {
           ctx.fillStyle = badge.background ?? '#d0202c'
-          drawBadgeShape(
+          drawRoundedRect(
             ctx,
             badge.backgroundLeft ?? badge.left,
             badge.top,
@@ -468,19 +468,20 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
         if (!badge.underFrame) drawBadgeBackground()
 
         ctx.fillStyle = badge.color ?? '#fff'
-        ctx.textBaseline = 'middle'
+        ctx.textBaseline = 'alphabetic'
+        ctx.textAlign = 'left'
         ctx.shadowColor = badge.textShadow === 'none' ? 'transparent' : 'rgba(0,0,0,0.45)'
         ctx.shadowBlur = badge.textShadow === 'none' ? 0 : 3
+        ctx.shadowOffsetX = 0
         ctx.shadowOffsetY = badge.textShadow === 'none' ? 0 : 2
-        const categoryText = displayCategory.toUpperCase()
-        const categoryX = badge.left + (badgeWidth - ctx.measureText(categoryText).width) / 2
-        const categoryY = badge.top + badge.height / 2
-        if (badge.textStrokeColor && badge.textStrokeWidth) {
-          ctx.lineWidth = badge.textStrokeWidth
-          ctx.strokeStyle = badge.textStrokeColor
-          ctx.strokeText(categoryText, categoryX, categoryY)
+        const categoryX = badge.left + (badgeWidth - categoryWidth) / 2
+        const categoryY = getCenteredTextBaseline(ctx, displayCategory, badge.top + badge.height / 2)
+        const hasCategoryStroke = Boolean(badge.textStrokeColor && badge.textStrokeWidth)
+        if (hasCategoryStroke) {
+          ctx.lineWidth = badge.textStrokeWidth ?? 1
+          ctx.strokeStyle = badge.textStrokeColor ?? '#000'
         }
-        ctx.fillText(categoryText, categoryX, categoryY)
+        drawSpacedText(ctx, displayCategory, categoryX, categoryY, BADGE_LETTER_SPACING, hasCategoryStroke)
 
         ctx.font = headlineFont
         ctx.textBaseline = 'top'
@@ -516,6 +517,7 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
           ctx.shadowColor = 'rgba(0,0,0,0.65)'
           ctx.fillText(line, isCenter ? centerX : headlineBox.left + headlineBox.paddingX, textY)
         })
+        videoTrack?.requestFrame()
       }
 
       await new Promise<void>((resolve) => {
@@ -527,7 +529,7 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
         sourceVideo.currentTime = exportStart
       })
       await sourceVideo.play()
-      recorder.start()
+      recorder.start(1000)
 
       await new Promise<void>((resolve) => {
         const render = () => {
@@ -884,9 +886,8 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
                     fontWeight: badge.fontWeight ?? 800,
                     fontSize: badge.fontSize,
                     lineHeight: 1,
-                    letterSpacing: 1,
+                    letterSpacing: BADGE_LETTER_SPACING,
                     color: badge.color ?? '#fff',
-                    textTransform: 'uppercase',
                     whiteSpace: 'nowrap',
                     textShadow: badge.textShadow ?? '0 2px 3px rgba(0,0,0,0.45)',
                     WebkitTextStroke: badge.textStrokeColor && badge.textStrokeWidth ? `${badge.textStrokeWidth}px ${badge.textStrokeColor}` : undefined,
