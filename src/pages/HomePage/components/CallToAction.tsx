@@ -9,10 +9,10 @@ export default function CallToAction() {
           <div>
             <div className={styles.title}>¿Listo para publicar?</div>
             <div className={styles.desc}>
-              Arma tu primera pieza y descárgala lista para tus redes.
+              Arma tu primera pieza y descárgala lista para Instagram, Facebook o WhatsApp.
             </div>
           </div>
-          <Link className={styles.link} to="/generador/video">
+          <Link className={styles.link} to="/generador/noticia">
             Abrir generador
           </Link>
         </div>

@@ -1,6 +1,6 @@
 import videoFrameSrc from '../../features/generators/assets/video-frame.png'
 import VideoReelEditor, { type VideoTemplateConfig } from '../../features/generators/components/VideoReelEditor'
-import { GeneratorShell } from '../GeneradorNoticia/GeneratorShell'
+import { GeneratorShell } from '../GeneradorNoticia/GeneradorNoticiaPage'
 
 const videoHorizontalConfig: VideoTemplateConfig = {
   title: 'Video',

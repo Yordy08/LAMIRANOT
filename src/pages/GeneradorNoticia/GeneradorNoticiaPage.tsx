@@ -1,7 +1,10 @@
 import { Link, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
+import GeneratorEditor from '../../features/generators/components/GeneratorEditor'
+import { plantillaNoticia45 } from '../../features/generators/templates/PlantillaNoticia45'
 import { useAuth } from '../../features/auth/AuthProvider'
 
+/** Barra de navegación compartida entre los módulos generadores. */
 export function GeneratorShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation()
   const { logout } = useAuth()
@@ -29,6 +32,7 @@ export function GeneratorShell({ children }: { children: ReactNode }) {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <nav className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/50 p-1">
+              {tab('/generador/noticia', 'Post')}
               {tab('/generador/video', 'Reels')}
               {tab('/generador/video-horizontal', 'Video')}
             </nav>
@@ -44,5 +48,14 @@ export function GeneratorShell({ children }: { children: ReactNode }) {
         <main className="flex-1">{children}</main>
       </div>
     </div>
+  )
+}
+
+/** Módulo generador de la plantilla Post. */
+export default function GeneradorNoticiaPage() {
+  return (
+    <GeneratorShell>
+      <GeneratorEditor definition={plantillaNoticia45} />
+    </GeneratorShell>
   )
 }

@@ -14,8 +14,8 @@ export default function Hero() {
           se mantiene siempre impecable.
         </p>
         <div className={styles.actions}>
-          <Link className={styles.primary} to="/generador/video">
-            Generador Reels
+          <Link className={styles.primary} to="/generador/noticia">
+            Generador Post
           </Link>
           <Link className={styles.secondary} to="/generador/video">
             Reels
