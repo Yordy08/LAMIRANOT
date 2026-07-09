@@ -483,30 +483,31 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
 
         ctx.font = headlineFont
         ctx.textBaseline = 'top'
-        ctx.textAlign = 'center'
         ctx.shadowColor = 'rgba(0,0,0,0.65)'
         ctx.shadowBlur = 14
         ctx.shadowOffsetY = 3
-        const centerX = headlineBox.left + headlineBox.width / 2
         headlineLines.forEach((line, index) => {
           const lineTop = headlineBox.top + index * headlineLineHeight
+          const textX = headlineBox.left + headlineBox.paddingX
           const textY = lineTop + headlineBox.paddingY
-          const lineWidth = ctx.measureText(line).width
 
           ctx.shadowColor = 'transparent'
           ctx.fillStyle = config.headlineBg
-          const bgLeft = config.headlineFitContent
-            ? centerX - (lineWidth + headlineBox.paddingX * 2) / 2
-            : headlineBox.left
-          const bgWidth = config.headlineFitContent
-            ? lineWidth + headlineBox.paddingX * 2
-            : headlineBox.width
-          drawRoundedRect(ctx, bgLeft, lineTop, bgWidth, headlineLineHeight + headlineBox.paddingY * 2, headlineBox.radius)
+          drawRoundedRect(
+            ctx,
+            headlineBox.left,
+            lineTop,
+            config.headlineFitContent
+              ? ctx.measureText(line).width + headlineBox.paddingX * 2
+              : headlineBox.width,
+            headlineLineHeight + headlineBox.paddingY * 2,
+            headlineBox.radius,
+          )
           ctx.fill()
 
           ctx.fillStyle = '#fff'
           ctx.shadowColor = 'rgba(0,0,0,0.65)'
-          ctx.fillText(line, centerX, textY)
+          ctx.fillText(line, textX, textY)
         })
       }
 
@@ -905,7 +906,6 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
                   fontSize: headlineSize,
                   lineHeight: `${headlineLineHeight}px`,
                   color: '#fff',
-                  textAlign: 'center',
                   textShadow: '0 3px 14px rgba(0,0,0,0.65), 0 1px 2px rgba(0,0,0,0.6)',
                   pointerEvents: 'none',
                 }}
@@ -915,7 +915,6 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
                     key={line}
                     style={{
                       display: 'table',
-                      margin: '0 auto',
                       background: config.headlineFitContent ? config.headlineBg : 'transparent',
                       padding: config.headlineFitContent ? `0 ${headlineBox.paddingX}px` : 0,
                     }}
