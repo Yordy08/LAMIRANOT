@@ -28,6 +28,7 @@ const videoHorizontalConfig: VideoTemplateConfig = {
   headlineBg: '#000',
   headlineWeight: 900,
   headlineSize: { initial: 64, min: 44, max: 86 },
+  headlineTextAlign: 'center',
 }
 
 /** Módulo generador de video usando la plantilla nueva. */

@@ -40,6 +40,7 @@ export interface VideoTemplateConfig {
   headlineFitContent?: boolean
   headlineWeight?: number
   headlineSize: { initial: number; min: number; max: number }
+  headlineTextAlign?: CanvasTextAlign
   videoBox?: { left: number; top: number; width: number; height: number; radius?: number }
 }
 
@@ -483,31 +484,34 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
 
         ctx.font = headlineFont
         ctx.textBaseline = 'top'
+        ctx.textAlign = config.headlineTextAlign ?? 'left'
         ctx.shadowColor = 'rgba(0,0,0,0.65)'
         ctx.shadowBlur = 14
         ctx.shadowOffsetY = 3
+        const centerX = headlineBox.left + headlineBox.width / 2
         headlineLines.forEach((line, index) => {
           const lineTop = headlineBox.top + index * headlineLineHeight
-          const textX = headlineBox.left + headlineBox.paddingX
           const textY = lineTop + headlineBox.paddingY
+          const lineWidth = ctx.measureText(line).width
 
           ctx.shadowColor = 'transparent'
           ctx.fillStyle = config.headlineBg
-          drawRoundedRect(
-            ctx,
-            headlineBox.left,
-            lineTop,
-            config.headlineFitContent
-              ? ctx.measureText(line).width + headlineBox.paddingX * 2
-              : headlineBox.width,
-            headlineLineHeight + headlineBox.paddingY * 2,
-            headlineBox.radius,
-          )
+          if (config.headlineTextAlign === 'center') {
+            const bgLeft = config.headlineFitContent
+              ? centerX - (lineWidth + headlineBox.paddingX * 2) / 2
+              : headlineBox.left
+            const bgWidth = config.headlineFitContent
+              ? lineWidth + headlineBox.paddingX * 2
+              : headlineBox.width
+            drawRoundedRect(ctx, bgLeft, lineTop, bgWidth, headlineLineHeight + headlineBox.paddingY * 2, headlineBox.radius)
+          } else {
+            drawRoundedRect(ctx, headlineBox.left, lineTop, config.headlineFitContent ? lineWidth + headlineBox.paddingX * 2 : headlineBox.width, headlineLineHeight + headlineBox.paddingY * 2, headlineBox.radius)
+          }
           ctx.fill()
 
           ctx.fillStyle = '#fff'
           ctx.shadowColor = 'rgba(0,0,0,0.65)'
-          ctx.fillText(line, textX, textY)
+          ctx.fillText(line, config.headlineTextAlign === 'center' ? centerX : headlineBox.left + headlineBox.paddingX, textY)
         })
       }
 
@@ -906,6 +910,7 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
                   fontSize: headlineSize,
                   lineHeight: `${headlineLineHeight}px`,
                   color: '#fff',
+                  textAlign: config.headlineTextAlign ?? 'left',
                   textShadow: '0 3px 14px rgba(0,0,0,0.65), 0 1px 2px rgba(0,0,0,0.6)',
                   pointerEvents: 'none',
                 }}
@@ -915,6 +920,7 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
                     key={line}
                     style={{
                       display: 'table',
+                      margin: config.headlineTextAlign === 'center' ? '0 auto' : undefined,
                       background: config.headlineFitContent ? config.headlineBg : 'transparent',
                       padding: config.headlineFitContent ? `0 ${headlineBox.paddingX}px` : 0,
                     }}
