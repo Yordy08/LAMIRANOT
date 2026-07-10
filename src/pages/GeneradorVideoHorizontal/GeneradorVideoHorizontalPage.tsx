@@ -6,7 +6,7 @@ const videoHorizontalConfig: VideoTemplateConfig = {
   title: 'Video',
   frameSrc: videoFrameSrc,
   size: { width: 1080, height: 1350 },
-  exportFileName: 'lamira-noticiosa-video.webm',
+  exportFileName: 'lamira-noticiosa-video.mp4',
   initialHeadline: 'Titular aqui ejemplo',
   placeholder: 'Sube un video',
   badge: {

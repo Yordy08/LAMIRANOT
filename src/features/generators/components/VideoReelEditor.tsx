@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type PointerEvent as ReactPointerEvent,
+  type SyntheticEvent,
+} from 'react'
 import { useFitScale } from '../hooks/useFitScale'
 import reelFrameSrc from '../assets/reels-frame.png'
 
@@ -16,27 +23,27 @@ const EXPORT_PRESETS: Record<
   { label: string; description: string; scale: number; fps: number; videoBitsPerSecond: number; audioBitsPerSecond: number }
 > = {
   fast: {
-    label: 'Rápido',
-    description: 'Más veloz y estable para compartir rápido.',
-    scale: 2 / 3,
-    fps: 24,
-    videoBitsPerSecond: 4_500_000,
+    label: 'Optimizado',
+    description: 'Menor peso manteniendo resolución nativa y buena nitidez para redes.',
+    scale: 1,
+    fps: 30,
+    videoBitsPerSecond: 4_200_000,
     audioBitsPerSecond: 128_000,
   },
   balanced: {
-    label: 'Calidad',
-    description: 'Buen equilibrio entre peso, calidad y compatibilidad.',
+    label: 'Equilibrado',
+    description: 'Mejor balance entre fluidez, calidad visual y tamaño del archivo.',
     scale: 1,
-    fps: 24,
-    videoBitsPerSecond: 6_000_000,
+    fps: 30,
+    videoBitsPerSecond: 5_500_000,
     audioBitsPerSecond: 160_000,
   },
   max: {
-    label: 'Máxima',
-    description: 'Mayor calidad, tarda más y genera archivos pesados.',
+    label: 'Alta nitidez',
+    description: 'Más detalle sin compresión excesiva, optimizado para evitar recompresión agresiva.',
     scale: 1,
     fps: 30,
-    videoBitsPerSecond: 8_000_000,
+    videoBitsPerSecond: 7_000_000,
     audioBitsPerSecond: 192_000,
   },
 }
@@ -82,7 +89,7 @@ const reelConfig: VideoTemplateConfig = {
   title: 'Reels',
   frameSrc: reelFrameSrc,
   size: REEL_SIZE,
-  exportFileName: 'lamira-noticiosa-reels.webm',
+  exportFileName: 'lamira-noticiosa-reels.mp4',
   initialHeadline: 'Aqui titular ejemplo',
   placeholder: 'Sube un video',
   badge: {
@@ -199,16 +206,13 @@ function getWrappedTextLines(text: string, font: string, maxWidth: number) {
 
 function getVideoExportFormat() {
   const candidates = [
-    { mimeType: 'video/webm;codecs=vp8,opus', extension: 'webm' },
-    { mimeType: 'video/webm;codecs=vp9,opus', extension: 'webm' },
-    { mimeType: 'video/webm', extension: 'webm' },
+    { mimeType: 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', extension: 'mp4' },
+    { mimeType: 'video/mp4;codecs=avc1.4D401E,mp4a.40.2', extension: 'mp4' },
+    { mimeType: 'video/mp4;codecs=avc1.640028,mp4a.40.2', extension: 'mp4' },
+    { mimeType: 'video/mp4', extension: 'mp4' },
   ]
   const supported = candidates.find(({ mimeType }) => MediaRecorder.isTypeSupported(mimeType))
-  if (supported) return supported
-  return {
-    mimeType: '',
-    extension: 'webm',
-  }
+  return supported ?? null
 }
 
 function formatTime(seconds: number) {
@@ -225,6 +229,7 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
   const [category, setCategory] = useState('Categoría')
   const [headline, setHeadline] = useState(config.initialHeadline)
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
+  const [videoLoad, setVideoLoad] = useState({ active: false, progress: 0 })
   const [videoDuration, setVideoDuration] = useState(0)
   const [trimStart, setTrimStart] = useState(0)
   const [trimEnd, setTrimEnd] = useState(0)
@@ -263,9 +268,40 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
     })
   }
 
+  const updateVideoLoadProgress = (video: HTMLVideoElement) => {
+    const duration = video.duration
+    if (!Number.isFinite(duration) || duration <= 0) return
+
+    let bufferedEnd = 0
+    for (let index = 0; index < video.buffered.length; index += 1) {
+      bufferedEnd = Math.max(bufferedEnd, video.buffered.end(index))
+    }
+
+    const progress = Math.min(100, Math.round((bufferedEnd / duration) * 100))
+    setVideoLoad((current) => ({ ...current, progress }))
+
+    if (progress >= 99 || video.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA) {
+      setVideoLoad({ active: false, progress: 100 })
+    }
+  }
+
+  const handleVideoLoadStart = () => {
+    setVideoLoad({ active: true, progress: 0 })
+  }
+
+  const handleVideoProgress = (e: SyntheticEvent<HTMLVideoElement>) => {
+    updateVideoLoadProgress(e.currentTarget)
+  }
+
+  const handleVideoReady = (e: SyntheticEvent<HTMLVideoElement>) => {
+    updateVideoLoadProgress(e.currentTarget)
+    setVideoLoad({ active: false, progress: 100 })
+  }
+
   const handlePreviewMetadata = () => {
     const video = previewVideoRef.current
     if (!video || !Number.isFinite(video.duration)) return
+    updateVideoLoadProgress(video)
     setVideoDuration(video.duration)
     setTrimStart(0)
     setTrimEnd(video.duration)
@@ -434,9 +470,13 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
       audioDestination.stream.getAudioTracks().forEach((track) => stream.addTrack(track))
       await audioContext.resume()
 
-      const { mimeType, extension } = getVideoExportFormat()
+      const exportFormat = getVideoExportFormat()
+      if (!exportFormat) {
+        throw new Error('Tu navegador no soporta exportación MP4/H.264. Intenta con una versión reciente de Chrome o Edge.')
+      }
+      const { mimeType, extension } = exportFormat
       const recorder = new MediaRecorder(stream, {
-        ...(mimeType ? { mimeType } : {}),
+        mimeType,
         videoBitsPerSecond: preset.videoBitsPerSecond,
         audioBitsPerSecond: preset.audioBitsPerSecond,
       })
@@ -448,7 +488,8 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
       }
 
       const finished = new Promise<Blob>((resolve, reject) => {
-        recorder.onstop = () => resolve(new Blob(chunks, { type: mimeType || 'video/webm' }))
+        // MediaRecorder genera el contenedor desde cero, evitando arrastrar metadata del archivo original.
+        recorder.onstop = () => resolve(new Blob(chunks, { type: mimeType }))
         recorder.onerror = () => reject(new Error('No se pudo exportar el video.'))
       })
 
@@ -668,6 +709,17 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
             >
               {videoUrl ? 'Cambiar video' : 'Subir video'}
             </button>
+            {videoLoad.active && (
+              <div className="mt-3">
+                <div className="mb-1 flex justify-between text-xs text-slate-400">
+                  <span>Cargando video</span>
+                  <span>{videoLoad.progress}%</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-slate-800">
+                  <div className="h-full rounded-full bg-red-600 transition-all" style={{ width: `${videoLoad.progress}%` }} />
+                </div>
+              </div>
+            )}
           </div>
 
           <div>
@@ -755,7 +807,7 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
               )}
             </select>
             <p className="mt-2 text-xs text-slate-500">
-              {selectedExportPreset.description} Exporta en {exportWidth}x{exportHeight} a {selectedExportPreset.fps}fps.
+              {selectedExportPreset.description} Exporta MP4/H.264 optimizado en {exportWidth}x{exportHeight} a {selectedExportPreset.fps}fps.
             </p>
           </div>
 
@@ -813,6 +865,10 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
                   controls
                   autoPlay
                   playsInline
+                  onLoadStart={handleVideoLoadStart}
+                  onProgress={handleVideoProgress}
+                  onLoadedData={handleVideoProgress}
+                  onCanPlayThrough={handleVideoReady}
                   onLoadedMetadata={handlePreviewMetadata}
                   onTimeUpdate={handlePreviewTimeUpdate}
                   style={{
@@ -851,6 +907,10 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
                     controls
                     autoPlay
                     playsInline
+                    onLoadStart={handleVideoLoadStart}
+                    onProgress={handleVideoProgress}
+                    onLoadedData={handleVideoProgress}
+                    onCanPlayThrough={handleVideoReady}
                     onLoadedMetadata={handlePreviewMetadata}
                     onTimeUpdate={handlePreviewTimeUpdate}
                     style={{
@@ -914,6 +974,10 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
                     controls
                     autoPlay
                     playsInline
+                    onLoadStart={handleVideoLoadStart}
+                    onProgress={handleVideoProgress}
+                    onLoadedData={handleVideoProgress}
+                    onCanPlayThrough={handleVideoReady}
                     onLoadedMetadata={handlePreviewMetadata}
                     onTimeUpdate={handlePreviewTimeUpdate}
                     style={{
@@ -1002,6 +1066,18 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
                   </span>
                 ))}
               </h1>
+
+              {videoUrl && videoLoad.active && (
+                <div className="pointer-events-none absolute inset-x-12 bottom-12 z-20 rounded-xl border border-slate-700 bg-slate-950/85 p-4 shadow-2xl shadow-black/50">
+                  <div className="mb-2 flex justify-between text-2xl font-semibold text-white">
+                    <span>Cargando video</span>
+                    <span>{videoLoad.progress}%</span>
+                  </div>
+                  <div className="h-4 overflow-hidden rounded-full bg-slate-800">
+                    <div className="h-full rounded-full bg-red-600 transition-all" style={{ width: `${videoLoad.progress}%` }} />
+                  </div>
+                </div>
+              )}
               </div>
             </div>
 
