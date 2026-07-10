@@ -18,6 +18,12 @@ const TIMELINE_TICKS = Array.from({ length: 18 }, (_, index) => `tick-${index}`)
 
 type ExportPresetKey = 'fast' | 'balanced' | 'max'
 
+interface ExportFormat {
+  mimeType: string
+  inputExtension: 'mp4' | 'webm'
+  needsMp4Conversion: boolean
+}
+
 const EXPORT_PRESETS: Record<
   ExportPresetKey,
   { label: string; description: string; scale: number; fps: number; videoBitsPerSecond: number; audioBitsPerSecond: number }
@@ -204,15 +210,85 @@ function getWrappedTextLines(text: string, font: string, maxWidth: number) {
   return wrapText(ctx, text, maxWidth)
 }
 
-function getVideoExportFormat() {
-  const candidates = [
-    { mimeType: 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', extension: 'mp4' },
-    { mimeType: 'video/mp4;codecs=avc1.4D401E,mp4a.40.2', extension: 'mp4' },
-    { mimeType: 'video/mp4;codecs=avc1.640028,mp4a.40.2', extension: 'mp4' },
-    { mimeType: 'video/mp4', extension: 'mp4' },
+function getVideoExportFormat(): ExportFormat | null {
+  const candidates: ExportFormat[] = [
+    { mimeType: 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', inputExtension: 'mp4', needsMp4Conversion: false },
+    { mimeType: 'video/mp4;codecs=avc1.4D401E,mp4a.40.2', inputExtension: 'mp4', needsMp4Conversion: false },
+    { mimeType: 'video/mp4;codecs=avc1.640028,mp4a.40.2', inputExtension: 'mp4', needsMp4Conversion: false },
+    { mimeType: 'video/mp4', inputExtension: 'mp4', needsMp4Conversion: true },
+    { mimeType: 'video/webm;codecs=vp9,opus', inputExtension: 'webm', needsMp4Conversion: true },
+    { mimeType: 'video/webm;codecs=vp8,opus', inputExtension: 'webm', needsMp4Conversion: true },
+    { mimeType: 'video/webm', inputExtension: 'webm', needsMp4Conversion: true },
   ]
   const supported = candidates.find(({ mimeType }) => MediaRecorder.isTypeSupported(mimeType))
   return supported ?? null
+}
+
+async function convertToMp4(blob: Blob, inputExtension: ExportFormat['inputExtension'], preset: (typeof EXPORT_PRESETS)[ExportPresetKey]) {
+  const [{ FFmpeg }, { fetchFile, toBlobURL }] = await Promise.all([
+    import('@ffmpeg/ffmpeg'),
+    import('@ffmpeg/util'),
+  ])
+  const ffmpeg = new FFmpeg()
+  const baseUrl = 'https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd'
+  const inputFile = `input.${inputExtension}`
+
+  try {
+    await ffmpeg.load({
+      coreURL: await toBlobURL(`${baseUrl}/ffmpeg-core.js`, 'text/javascript'),
+      wasmURL: await toBlobURL(`${baseUrl}/ffmpeg-core.wasm`, 'application/wasm'),
+    })
+
+    await ffmpeg.writeFile(inputFile, await fetchFile(blob))
+    const result = await ffmpeg.exec([
+      '-i',
+      inputFile,
+      '-map_metadata',
+      '-1',
+      '-movflags',
+      'faststart',
+      '-c:v',
+      'libx264',
+      '-preset',
+      'veryfast',
+      '-profile:v',
+      'high',
+      '-level',
+      '4.1',
+      '-pix_fmt',
+      'yuv420p',
+      '-r',
+      String(preset.fps),
+      '-b:v',
+      String(preset.videoBitsPerSecond),
+      '-maxrate',
+      String(Math.round(preset.videoBitsPerSecond * 1.2)),
+      '-bufsize',
+      String(preset.videoBitsPerSecond * 2),
+      '-c:a',
+      'aac',
+      '-b:a',
+      String(preset.audioBitsPerSecond),
+      '-ar',
+      '48000',
+      '-ac',
+      '2',
+      'output.mp4',
+    ])
+
+    if (result !== 0) throw new Error('No se pudo convertir el video a MP4/H.264.')
+    const data = await ffmpeg.readFile('output.mp4')
+    const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : new Uint8Array(data)
+    return new Blob([bytes], { type: 'video/mp4' })
+  } finally {
+    try {
+      await ffmpeg.deleteFile(inputFile)
+      await ffmpeg.deleteFile('output.mp4')
+    } catch {
+      /* los temporales pueden no existir si la conversión falló antes */
+    }
+    ffmpeg.terminate()
+  }
 }
 
 function formatTime(seconds: number) {
@@ -472,9 +548,9 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
 
       const exportFormat = getVideoExportFormat()
       if (!exportFormat) {
-        throw new Error('Tu navegador no soporta exportación MP4/H.264. Intenta con una versión reciente de Chrome o Edge.')
+        throw new Error('Tu navegador no soporta exportación de video compatible.')
       }
-      const { mimeType, extension } = exportFormat
+      const { mimeType } = exportFormat
       const recorder = new MediaRecorder(stream, {
         mimeType,
         videoBitsPerSecond: preset.videoBitsPerSecond,
@@ -640,10 +716,14 @@ export default function VideoReelEditor({ config = reelConfig }: { config?: Vide
 
       recorder.stop()
       const blob = await finished
-      const url = URL.createObjectURL(blob)
+      setExportProgress(exportFormat.needsMp4Conversion ? 99 : 100)
+      const finalBlob = exportFormat.needsMp4Conversion
+        ? await convertToMp4(blob, exportFormat.inputExtension, preset)
+        : blob
+      const url = URL.createObjectURL(finalBlob)
       const link = document.createElement('a')
       link.href = url
-      link.download = config.exportFileName.replace(/\.[^.]+$/, `.${extension}`)
+      link.download = config.exportFileName.replace(/\.[^.]+$/, '.mp4')
       link.click()
       URL.revokeObjectURL(url)
       setExportProgress(100)
